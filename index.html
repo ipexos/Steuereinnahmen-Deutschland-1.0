@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Steueraufkommen Deutschland – Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="daten_1.js"></script>
+<style>
+  :root {
+    --navy:   #0d2240;
+    --navy2:  #152e56;
+    --navy3:  #1e3f72;
+    --amber:  #c8922a;
+    --amber2: #e0a93a;
+    --gold:   #f5c842;
+    --slate:  #f0f3f7;
+    --slate2: #e2e8f0;
+    --slate3: #c8d4e3;
+    --text:   #0d1f35;
+    --muted:  #5a7090;
+    --white:  #ffffff;
+    --green:  #1a7a4a;
+    --red:    #b83232;
+    --green-bg: #e8f5ee;
+    --red-bg:   #fbeaea;
+    --mono: 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--slate); color: var(--text); min-height: 100vh; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+    border-bottom: 3px solid var(--amber);
+  }
+  header .brand { display: flex; align-items: center; gap: 0.75rem; }
+  header .brand-icon { width: 32px; height: 32px; background: var(--amber); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 900; color: var(--navy); }
+  header .brand-text { font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  header .brand-sub  { font-size: 0.7rem; color: var(--slate3); letter-spacing: 0.02em; }
+  header nav { display: flex; gap: 0.25rem; }
+  header nav button {
+    background: none; border: none; color: var(--slate3); padding: 0.4rem 0.9rem;
+    border-radius: 4px; cursor: pointer; font-size: 0.78rem; font-weight: 500; letter-spacing: 0.03em;
+    text-transform: uppercase; transition: all 0.15s;
+  }
+  header nav button:hover, header nav button.active { background: var(--navy3); color: var(--white); }
+  header nav button.active { border-bottom: 2px solid var(--amber2); }
+
+  /* ── VIEWS ── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── HOME ── */
+  .home-hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 60%, var(--navy3) 100%);
+    color: var(--white); padding: 3rem 2.5rem 2.5rem;
+  }
+  .home-hero h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.4rem; }
+  .home-hero p  { color: var(--slate3); font-size: 0.88rem; max-width: 580px; line-height: 1.5; }
+  .home-hero .latest-tag {
+    display: inline-block; background: var(--amber); color: var(--navy);
+    font-size: 0.88rem; font-weight: 700; letter-spacing: 0.02em;
+    padding: 0.45rem 1.1rem; border-radius: 4px; margin-top: 1.1rem;
+  }
+
+  .home-kpis {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    background: var(--navy3); border-top: 1px solid var(--navy3);
+  }
+  .home-kpi {
+    background: var(--navy2); padding: 1.25rem 1.5rem;
+  }
+  .home-kpi .kpi-label { font-size: 0.7rem; color: var(--slate3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
+  .home-kpi .kpi-val   { font-size: 1.5rem; font-weight: 700; font-family: var(--mono); color: var(--white); }
+  .home-kpi .kpi-delta { font-size: 0.75rem; margin-top: 0.2rem; }
+  .home-kpi .kpi-delta.pos { color: var(--gold); }
+  .home-kpi .kpi-delta.neg { color: #f08080; }
+
+  .home-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; padding: 2rem 2.5rem; }
+  .home-card {
+    background: var(--white); border-radius: 8px; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(13,34,64,0.08); cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s; border: 2px solid transparent;
+  }
+  .home-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(13,34,64,0.15); border-color: var(--amber); }
+  .home-card-header { background: var(--navy); color: var(--white); padding: 1.1rem 1.4rem; display: flex; align-items: center; gap: 0.75rem; }
+  .home-card-icon { width: 36px; height: 36px; background: var(--amber); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 900; color: var(--navy); flex-shrink: 0; }
+  .home-card-header h2 { font-size: 0.95rem; font-weight: 700; }
+  .home-card-header p  { font-size: 0.72rem; color: var(--slate3); margin-top: 0.1rem; }
+  .home-card-body { padding: 1rem 1.4rem 1.2rem; }
+  .home-card-chart { height: 90px; margin-bottom: 0.75rem; }
+  .home-card-meta { display: flex; gap: 1.5rem; }
+  .home-card-stat .stat-l { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .home-card-stat .stat-v { font-size: 0.9rem; font-weight: 700; font-family: var(--mono); }
+  .home-card-cta {
+    display: block; width: 100%; padding: 0.6rem; background: var(--slate); border: none;
+    border-top: 1px solid var(--slate2); color: var(--navy3); font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; transition: background 0.15s;
+  }
+  .home-card-cta:hover { background: var(--amber); color: var(--navy); }
+
+  /* ── TABELLEN VIEWS ── */
+  .view-header {
+    background: var(--navy); color: var(--white); padding: 1rem 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .view-header h1 { font-size: 1rem; font-weight: 700; }
+  .view-header p   { font-size: 0.72rem; color: var(--slate3); }
+  .back-btn {
+    background: none; border: 1px solid var(--navy3); color: var(--slate3);
+    padding: 0.35rem 0.9rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;
+    display: flex; align-items: center; gap: 0.4rem; transition: all 0.15s; white-space: nowrap;
+  }
+  .back-btn:hover { background: var(--navy3); color: var(--white); }
+
+  /* controls bar */
+  .controls-bar {
+    background: var(--white); border-bottom: 1px solid var(--slate2);
+    padding: 0.7rem 2rem; display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;
+  }
+  .ctrl-group { display: flex; align-items: center; gap: 0.5rem; }
+  .ctrl-label { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  .ctrl-group select, .ctrl-group input[type=range] {
+    border: 1px solid var(--slate2); border-radius: 4px; padding: 0.3rem 0.5rem;
+    font-size: 0.78rem; color: var(--text); background: var(--white); cursor: pointer;
+  }
+  .ctrl-group select:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .mode-btns { display: flex; border: 1px solid var(--slate2); border-radius: 4px; overflow: hidden; }
+  .mode-btn {
+    padding: 0.3rem 0.8rem; font-size: 0.72rem; font-weight: 600; border: none; background: var(--white);
+    color: var(--muted); cursor: pointer; transition: all 0.12s; white-space: nowrap;
+  }
+  .mode-btn:not(:last-child) { border-right: 1px solid var(--slate2); }
+  .mode-btn.active { background: var(--navy); color: var(--white); }
+
+  /* chart + table layout */
+  .content-wrap { display: grid; grid-template-rows: auto 1fr; height: calc(100vh - 56px - 57px - 54px); }
+  .chart-panel {
+    background: var(--white); border-bottom: 1px solid var(--slate2);
+    padding: 1rem 2rem; height: 220px;
+  }
+  .chart-panel canvas { max-height: 185px; }
+  .table-panel { overflow-y: auto; padding: 0 2rem 2rem; }
+
+  /* data table */
+  .data-table { width: 100%; border-collapse: collapse; margin-top: 1.25rem; font-size: 0.78rem; }
+  .data-table thead th {
+    background: var(--navy); color: var(--white); padding: 0.55rem 0.75rem;
+    text-align: right; font-weight: 600; font-size: 0.68rem; letter-spacing: 0.04em;
+    text-transform: uppercase; white-space: nowrap; position: sticky; top: 0; z-index: 2;
+  }
+  .data-table thead th:first-child { text-align: left; }
+  .data-table tbody tr { border-bottom: 1px solid var(--slate2); transition: background 0.1s; }
+  .data-table tbody tr:hover { background: #f0f4fa; }
+  .data-table td { padding: 0.45rem 0.75rem; text-align: right; font-family: var(--mono); white-space: nowrap; }
+  .data-table td.label-col { text-align: left; font-family: 'Segoe UI', Arial, sans-serif; }
+  .data-table td.label-col.indent1 { padding-left: 1.5rem; }
+  .data-table td.label-col.indent2 { padding-left: 2.75rem; }
+
+  /* row types */
+  .row-agg   { background: #eef2fa; font-weight: 700; }
+  .row-agg td { color: var(--navy); }
+  .row-agg2  { background: #d6dff5; }
+  .row-agg2 td { color: var(--navy); font-weight: 700; font-size: 0.85rem; }
+  .row-total { background: var(--navy) !important; }
+  .row-total td { color: var(--white) !important; font-weight: 700; font-size: 0.85rem; }
+  .row-sub  { }
+  .row-deduction td { color: var(--muted); }
+  .row-section-header td {
+    background: var(--slate2); color: var(--navy2); font-weight: 700;
+    font-family: 'Segoe UI', Arial, sans-serif; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.05em; padding: 0.4rem 0.75rem;
+    text-align: left;
+  }
+
+  /* delta cells */
+  .delta-pos { color: var(--green); }
+  .delta-neg { color: var(--red); }
+  .delta-cell { font-size: 0.73rem; }
+
+  /* number formatting */
+  .num-neg { color: var(--red); }
+
+  /* ── DETAIL VIEW ── */
+  .detail-header {
+    background: var(--navy); color: var(--white); padding: 1rem 2rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  .detail-title { font-size: 1rem; font-weight: 700; }
+  .detail-sub   { font-size: 0.72rem; color: var(--slate3); margin-top: 0.15rem; }
+  .detail-badge {
+    display: inline-block; background: var(--amber); color: var(--navy);
+    font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 3px;
+    letter-spacing: 0.04em; margin-right: 0.5rem; vertical-align: middle;
+  }
+  .detail-charts { display: grid; grid-template-columns: 1fr; gap: 0; }
+  .detail-chart-panel {
+    background: var(--white); border-bottom: 1px solid var(--slate2);
+    padding: 1rem 2rem; height: 260px;
+  }
+  .detail-chart-panel canvas { max-height: 225px; }
+  .detail-chart-title {
+    font-size: 0.72rem; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;
+  }
+  /* ── DETAIL SIDEBAR ── */
+  .sidebar-section-hdr {
+    font-size: 0.65rem; font-weight: 700; color: var(--white);
+    background: var(--navy2); text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 0.4rem 0.75rem; position: sticky; top: 0; z-index: 1;
+  }
+  .sidebar-item {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.32rem 0.75rem; cursor: pointer; border-bottom: 1px solid var(--slate2);
+    transition: background 0.1s; font-size: 0.74rem; color: var(--text); line-height: 1.3;
+    width: 100%; box-sizing: border-box;
+  }
+  .sidebar-item:hover { background: #f0f4fa; }
+  .sidebar-item.indent1 { padding-left: 1.25rem; }
+  .sidebar-item.indent2 { padding-left: 2rem; font-size: 0.7rem; color: var(--muted); }
+  .sidebar-item input[type=checkbox] {
+    appearance: auto; -webkit-appearance: checkbox;
+    accent-color: var(--navy); flex-shrink: 0; cursor: pointer;
+    width: 14px; height: 14px; min-width: 14px;
+  }
+  .sidebar-item.agg-row { font-weight: 700; background: #eef2fa; }
+  .sidebar-item.total-row { font-weight: 700; background: #d6dff5; }
+  .sidebar-item.disabled { opacity: 0.38; cursor: not-allowed; }
+  .sidebar-item.disabled input { pointer-events: none; }
+  .sidebar-color-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: none;
+  }
+  /* clickable table rows */
+  .data-table tbody tr.row-clickable { cursor: pointer; }
+  .data-table tbody tr.row-clickable:hover td.label-col { color: var(--amber); text-decoration: underline; }
+  .data-table tbody tr.row-active { background: #fffbe8 !important; }
+  .data-table tbody tr.row-active td.label-col { color: var(--amber); font-weight: 700; }
+
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">€</div>
+    <div>
+      <div class="brand-text">Steueraufkommen Deutschland</div>
+      <div class="brand-sub">Steueraufkommen · Monatliche Übersicht</div>
+
+    </div>
+  </div>
+  <nav>
+    <button class="active" onclick="showView('home',this)">Übersicht</button>
+    <button onclick="showView('t1',this)">Tabelle 1</button>
+    <button onclick="showView('t2',this)">Tabelle 2</button>
+    <button id="nav-detail" onclick="showView('detail',this)" style="display:none">Detailansicht</button>
+  </nav>
+</header>
+
+<!-- ═══════════════════ HOME ═══════════════════ -->
+<div id="view-home" class="view active">
+  <div class="home-hero">
+    <h1>Steuereinnahmen der Bundesrepublik Deutschland</h1>
+    <p>Monatliche Übersicht des Steueraufkommens nach Steuerarten und Gebietskörperschaften (ohne Gemeindesteuern). Datenquelle: Bundesministerium der Finanzen.</p>
+    <div class="latest-tag" id="home-latest-tag">Aktuellste Daten</div>
+  </div>
+  <div class="home-kpis">
+    <div class="home-kpi">
+      <div class="kpi-label">Steuern insgesamt</div>
+      <div class="kpi-val" id="kpi-355">–</div>
+      <div class="kpi-delta" id="kpi-355d">–</div>
+    </div>
+    <div class="home-kpi">
+      <div class="kpi-label">Bund</div>
+      <div class="kpi-val" id="kpi-bund">–</div>
+      <div class="kpi-delta" id="kpi-bundd">–</div>
+    </div>
+    <div class="home-kpi">
+      <div class="kpi-label">Länder</div>
+      <div class="kpi-val" id="kpi-laend">–</div>
+      <div class="kpi-delta" id="kpi-laendd">–</div>
+    </div>
+    <div class="home-kpi">
+      <div class="kpi-label">Gemeinden</div>
+      <div class="kpi-val" id="kpi-gem">–</div>
+      <div class="kpi-delta" id="kpi-gemd">–</div>
+    </div>
+  </div>
+  <div class="home-cards">
+    <div class="home-card" onclick="showView('t1',document.querySelector('nav button:nth-child(2)'))">
+      <div class="home-card-header">
+        <div class="home-card-icon">I</div>
+        <div>
+          <h2>Tabelle 1 – Steuerarten</h2>
+          <p>Steuereinnahmen ohne Gemeindesteuern · Gemeinschaftl., Bundes- & Ländersteuern</p>
+        </div>
+      </div>
+      <div class="home-card-body">
+        <div class="home-card-chart"><canvas id="miniChart1"></canvas></div>
+        <div class="home-card-meta">
+          <div class="home-card-stat"><div class="stat-l">Gemeinschaftl.</div><div class="stat-v" id="hs-173">–</div></div>
+          <div class="home-card-stat"><div class="stat-l">Bundessteuern</div><div class="stat-v" id="hs-174">–</div></div>
+          <div class="home-card-stat"><div class="stat-l">Ländersteuern</div><div class="stat-v" id="hs-175">–</div></div>
+        </div>
+      </div>
+      <button class="home-card-cta">Tabelle 1 öffnen →</button>
+    </div>
+    <div class="home-card" onclick="showView('t2',document.querySelector('nav button:nth-child(3)'))">
+      <div class="home-card-header">
+        <div class="home-card-icon">II</div>
+        <div>
+          <h2>Tabelle 2 – Gebietskörperschaften</h2>
+          <p>Aufteilung auf Bund, Länder, EU-Eigenmittel & Gemeinden</p>
+        </div>
+      </div>
+      <div class="home-card-body">
+        <div class="home-card-chart"><canvas id="miniChart2"></canvas></div>
+        <div class="home-card-meta">
+          <div class="home-card-stat"><div class="stat-l">Bund</div><div class="stat-v" id="hs-bund">–</div></div>
+          <div class="home-card-stat"><div class="stat-l">Länder</div><div class="stat-v" id="hs-laend">–</div></div>
+          <div class="home-card-stat"><div class="stat-l">EU-Eigenmittel</div><div class="stat-v" id="hs-eu">–</div></div>
+        </div>
+      </div>
+      <button class="home-card-cta">Tabelle 2 öffnen →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ TABELLE 1 ═══════════════════ -->
+<div id="view-t1" class="view">
+  <div class="view-header">
+    <div>
+      <h1>Tabelle 1 – Steuereinnahmen nach Steuerarten</h1>
+      <p>Steuereinnahmen ohne Gemeindesteuern · Alle Angaben in Tsd. Euro</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button class="back-btn" onclick="exportTableCSV('t1')" title="CSV herunterladen">⬇ CSV</button>
+      <button class="back-btn" onclick="exportTableXLSX('t1')" title="Excel herunterladen">⬇ Excel</button>
+      <button class="back-btn" onclick="showView('home',document.querySelector('nav button'))">← Übersicht</button>
+    </div>
+  </div>
+  <div class="controls-bar">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Aggregation</span>
+      <div class="mode-btns">
+        <button class="mode-btn active" onclick="setAgg('t1','M',this)">Monat</button>
+        <button class="mode-btn" onclick="setAgg('t1','Q',this)">Quartal</button>
+        <button class="mode-btn" onclick="setAgg('t1','Y',this)">Jahr</button>
+        <button class="mode-btn" onclick="setAgg('t1','C',this)">Kumuliert</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Jahr</span>
+      <select id="t1-jahr" onchange="renderT1()">
+        <option value="2026">2026</option>
+        <option value="2025" selected>2025</option>
+        <option value="2024">2024</option>
+        <option value="2023">2023</option>
+        <option value="2022">2022</option>
+        <option value="2021">2021</option>
+        <option value="2020">2020</option>
+        <option value="2019">2019</option>
+        <option value="2018">2018</option>
+        <option value="2017">2017</option>
+        <option value="2016">2016</option>
+        <option value="2015">2015</option>
+        <option value="2014">2014</option>
+        <option value="2013">2013</option>
+        <option value="2012">2012</option>
+        <option value="2011">2011</option>
+        <option value="2010">2010</option>
+        <option value="2009">2009</option>
+        <option value="2008">2008</option>
+        <option value="2007">2007</option>
+        <option value="2006">2006</option>
+        <option value="2005">2005</option>
+        <option value="2004">2004</option>
+        <option value="2003">2003</option>
+        <option value="2002">2002</option>
+        <option value="2001">2001</option>
+        <option value="2000">2000</option>
+      </select>
+    </div>
+    <div class="ctrl-group" id="t1-monat-ctrl">
+      <span class="ctrl-label">Monat</span>
+      <select id="t1-monat" onchange="renderT1()">
+        <option value="1">Januar</option><option value="2">Februar</option>
+        <option value="3">März</option><option value="4">April</option>
+        <option value="5">Mai</option><option value="6">Juni</option>
+        <option value="7">Juli</option><option value="8">August</option>
+        <option value="9">September</option><option value="10">Oktober</option>
+        <option value="11">November</option><option value="12">Dezember</option>
+      </select>
+    </div>
+    <div class="ctrl-group" id="t1-quartal-ctrl" style="display:none">
+      <span class="ctrl-label">Quartal</span>
+      <select id="t1-quartal" onchange="renderT1()">
+        <option value="1">Q1</option><option value="2">Q2</option>
+        <option value="3">Q3</option><option value="4">Q4</option>
+      </select>
+    </div>
+  </div>
+  <div class="content-wrap">
+    <div class="chart-panel"><canvas id="chartT1"></canvas></div>
+    <div class="table-panel"><table class="data-table" id="tableT1"></table></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ TABELLE 2 ═══════════════════ -->
+<div id="view-t2" class="view">
+  <div class="view-header">
+    <div>
+      <h1>Tabelle 2 – Steuereinnahmen nach Gebietskörperschaften</h1>
+      <p>Aufteilung auf Bund, Länder, EU-Eigenmittel & Gemeinden · Alle Angaben in Tsd. Euro</p>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <button class="back-btn" onclick="exportTableCSV('t2')" title="CSV herunterladen">⬇ CSV</button>
+      <button class="back-btn" onclick="exportTableXLSX('t2')" title="Excel herunterladen">⬇ Excel</button>
+      <button class="back-btn" onclick="showView('home',document.querySelector('nav button'))">← Übersicht</button>
+    </div>
+  </div>
+  <div class="controls-bar">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Aggregation</span>
+      <div class="mode-btns">
+        <button class="mode-btn active" onclick="setAgg('t2','M',this)">Monat</button>
+        <button class="mode-btn" onclick="setAgg('t2','Q',this)">Quartal</button>
+        <button class="mode-btn" onclick="setAgg('t2','Y',this)">Jahr</button>
+        <button class="mode-btn" onclick="setAgg('t2','C',this)">Kumuliert</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Jahr</span>
+      <select id="t2-jahr" onchange="renderT2()">
+        <option value="2026">2026</option>
+        <option value="2025" selected>2025</option>
+        <option value="2024">2024</option>
+        <option value="2023">2023</option>
+        <option value="2022">2022</option>
+        <option value="2021">2021</option>
+        <option value="2020">2020</option>
+        <option value="2019">2019</option>
+        <option value="2018">2018</option>
+        <option value="2017">2017</option>
+        <option value="2016">2016</option>
+        <option value="2015">2015</option>
+        <option value="2014">2014</option>
+        <option value="2013">2013</option>
+        <option value="2012">2012</option>
+        <option value="2011">2011</option>
+        <option value="2010">2010</option>
+        <option value="2009">2009</option>
+        <option value="2008">2008</option>
+        <option value="2007">2007</option>
+        <option value="2006">2006</option>
+        <option value="2005">2005</option>
+        <option value="2004">2004</option>
+        <option value="2003">2003</option>
+        <option value="2002">2002</option>
+        <option value="2001">2001</option>
+        <option value="2000">2000</option>
+      </select>
+    </div>
+    <div class="ctrl-group" id="t2-monat-ctrl">
+      <span class="ctrl-label">Monat</span>
+      <select id="t2-monat" onchange="renderT2()">
+        <option value="1">Januar</option><option value="2">Februar</option>
+        <option value="3">März</option><option value="4">April</option>
+        <option value="5">Mai</option><option value="6">Juni</option>
+        <option value="7">Juli</option><option value="8">August</option>
+        <option value="9">September</option><option value="10">Oktober</option>
+        <option value="11">November</option><option value="12">Dezember</option>
+      </select>
+    </div>
+    <div class="ctrl-group" id="t2-quartal-ctrl" style="display:none">
+      <span class="ctrl-label">Quartal</span>
+      <select id="t2-quartal" onchange="renderT2()">
+        <option value="1">Q1</option><option value="2">Q2</option>
+        <option value="3">Q3</option><option value="4">Q4</option>
+      </select>
+    </div>
+  </div>
+  <div class="content-wrap">
+    <div class="chart-panel"><canvas id="chartT2"></canvas></div>
+    <div class="table-panel"><table class="data-table" id="tableT2"></table></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ DETAIL VIEW ═══════════════════ -->
+<div id="view-detail" class="view">
+  <div class="detail-header">
+    <div>
+      <div class="detail-title" id="det-title">Zeitreihenvergleich</div>
+      <div class="detail-sub" id="det-sub">Alle Angaben in Tsd. Euro</div>
+      <div style="font-size:0.68rem;margin-top:0.2rem;color:var(--slate3)">
+        <span style="display:inline-block;width:10px;height:10px;background:#c8922a;border-radius:2px;margin-right:4px;vertical-align:middle"></span>vorläufig (laufendes Jahr, noch nicht alle Monate verfügbar)
+      </div>
+    </div>
+    <button id="det-back-btn" class="back-btn" onclick="showView('t1',document.querySelector('nav button:nth-child(2)'))">← Zurück</button>
+    <button class="back-btn" onclick="exportDetailCSV()" title="CSV herunterladen" style="margin-left:0.25rem">⬇ CSV</button>
+    <button class="back-btn" onclick="exportDetailXLSX()" title="Excel herunterladen">⬇ Excel</button>
+  </div>
+  <div class="controls-bar">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Aggregation</span>
+      <div class="mode-btns">
+        <button class="mode-btn active" onclick="setDetAgg('M',this)">Monat</button>
+        <button class="mode-btn" onclick="setDetAgg('Q',this)">Quartal</button>
+        <button class="mode-btn" onclick="setDetAgg('Y',this)">Jahr</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Von</span>
+      <select id="det-von" onchange="renderDetail()">
+        <option value="2000">2000</option><option value="2001">2001</option>
+        <option value="2002">2002</option><option value="2003">2003</option>
+        <option value="2004">2004</option><option value="2005">2005</option>
+        <option value="2006">2006</option><option value="2007">2007</option>
+        <option value="2008">2008</option><option value="2009">2009</option>
+        <option value="2010">2010</option><option value="2011">2011</option>
+        <option value="2012">2012</option><option value="2013">2013</option>
+        <option value="2014">2014</option><option value="2015" selected>2015</option>
+        <option value="2016">2016</option><option value="2017">2017</option>
+        <option value="2018">2018</option><option value="2019">2019</option>
+        <option value="2020">2020</option><option value="2021">2021</option>
+        <option value="2022">2022</option><option value="2023">2023</option>
+        <option value="2024">2024</option><option value="2025">2025</option>
+        <option value="2026">2026</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Bis</span>
+      <select id="det-bis" onchange="renderDetail()">
+        <option value="2000">2000</option><option value="2001">2001</option>
+        <option value="2002">2002</option><option value="2003">2003</option>
+        <option value="2004">2004</option><option value="2005">2005</option>
+        <option value="2006">2006</option><option value="2007">2007</option>
+        <option value="2008">2008</option><option value="2009">2009</option>
+        <option value="2010">2010</option><option value="2011">2011</option>
+        <option value="2012">2012</option><option value="2013">2013</option>
+        <option value="2014">2014</option><option value="2015">2015</option>
+        <option value="2016">2016</option><option value="2017">2017</option>
+        <option value="2018">2018</option><option value="2019">2019</option>
+        <option value="2020">2020</option><option value="2021">2021</option>
+        <option value="2022">2022</option><option value="2023">2023</option>
+        <option value="2024">2024</option><option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Einheit</span>
+      <div class="mode-btns">
+        <button class="mode-btn active" onclick="setDetUnit('abs',this)">Tsd. €</button>
+        <button class="mode-btn" onclick="setDetUnit('mrd',this)">Mrd. €</button>
+      </div>
+    </div>
+    <div class="ctrl-group" style="margin-left:auto">
+      <span id="det-series-count" style="font-size:0.72rem;color:var(--muted);font-weight:600"></span>
+    </div>
+  </div>
+  <!-- Main: sidebar + charts -->
+  <div style="display:grid;grid-template-columns:230px 1fr;height:calc(100vh - 56px - 57px - 54px);overflow:hidden">
+    <!-- Sidebar: series selector -->
+    <div id="det-sidebar" style="overflow-y:auto;border-right:1px solid var(--slate2);background:var(--white);padding-bottom:1rem"></div>
+    <!-- Charts -->
+    <div style="overflow-y:auto">
+      <div class="detail-chart-panel">
+        <div class="detail-chart-title">Absoluter Wert</div>
+        <canvas id="chartDetAbs"></canvas>
+      </div>
+      <div class="detail-chart-panel">
+        <div class="detail-chart-title">Veränderungsrate gegenüber Vorjahr (%)</div>
+        <canvas id="chartDetPct"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+
+// ════════════════════════════════════════════════════
+//  DATA
+// ════════════════════════════════════════════════════
+// Daten werden aus daten_1.js geladen (window.STEUER_DATA)
+const RAW = window.STEUER_DATA || [];
+
+const MONTHS = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const MONTHS_LONG = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+
+// State
+const state = { t1: {agg:'M'}, t2: {agg:'M'} };
+let chartT1=null, chartT2=null, miniC1=null, miniC2=null;
+
+// ────── Utilities ──────
+function fmt(v, d=0) {
+  if (v==null||isNaN(v)) return '–';
+  const abs = Math.abs(v);
+  const s = abs.toLocaleString('de-DE', {minimumFractionDigits:d, maximumFractionDigits:d});
+  return v < 0 ? `−${s}` : s;
+}
+function fmtMrd(v) {
+  return fmt(v/1000000,1)+' Mrd. €';
+}
+function pct(a,b) {
+  if (!b) return null;
+  return ((a-b)/Math.abs(b))*100;
+}
+function getData(jahr, monat) {
+  return RAW.find(r => r.jahr==jahr && r.monat==monat);
+}
+function sumField(records, field, sub) {
+  return records.reduce((s,r) => s + (r[sub][field]||0), 0);
+}
+// Get aggregated record for a period
+function getAggData(table, agg, jahr, monat, quartal) {
+  let records = [];
+  if (agg==='M') {
+    const r = getData(jahr, monat);
+    records = r ? [r] : [];
+  } else if (agg==='Q') {
+    const m0 = (quartal-1)*3+1;
+    for(let m=m0;m<m0+3;m++) { const r=getData(jahr,m); if(r) records.push(r); }
+  } else if (agg==='Y') {
+    for(let m=1;m<=12;m++) { const r=getData(jahr,m); if(r) records.push(r); }
+  } else if (agg==='C') {
+    for(let m=1;m<=monat;m++) { const r=getData(jahr,m); if(r) records.push(r); }
+  }
+  if (!records.length) return null;
+  // Sum all fields
+  const sub = table;
+  const keys = Object.keys(records[0][sub]);
+  const out = {};
+  keys.forEach(k => { out[k] = records.reduce((s,r) => s+(r[sub][k]||0), 0); });
+  return out;
+}
+function getPrevData(table, agg, jahr, monat, quartal) {
+  if (agg==='M') return getAggData(table,agg,jahr-1,monat,quartal);
+  if (agg==='Q') return getAggData(table,agg,jahr-1,monat,quartal);
+  if (agg==='Y') return getAggData(table,agg,jahr-1,monat,quartal);
+  if (agg==='C') return getAggData(table,agg,jahr-1,monat,quartal);
+}
+
+// ────── View switching ──────
+function showView(id, btn) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id==='t1') renderT1();
+  if (id==='t2') renderT2();
+  if (id==='home') renderHome();
+  if (id==='detail') renderDetail();
+  // Hide detail nav button when leaving detail
+  if (id !== 'detail') {
+    // keep button visible if a series has been selected
+  }
+}
+function setAgg(tbl, agg, btn) {
+  state[tbl].agg = agg;
+  btn.closest('.mode-btns').querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const mc = document.getElementById(`${tbl}-monat-ctrl`);
+  const qc = document.getElementById(`${tbl}-quartal-ctrl`);
+  mc.style.display = (agg==='M'||agg==='C') ? '' : 'none';
+  qc.style.display = (agg==='Q') ? '' : 'none';
+  if (tbl==='t1') renderT1(); else renderT2();
+}
+
+// ────── HOME ──────
+function renderHome() {
+  // Find latest available month
+  const avail = RAW.filter(r => r.t1['355'] > 0).sort((a,b) => b.jahr-a.jahr||b.monat-a.monat);
+  if (!avail.length) return;
+  const latest = avail[0];
+  const prev = getData(latest.jahr-1, latest.monat);
+  document.getElementById('home-latest-tag').textContent = `Aktuellste Daten: ${MONTHS_LONG[latest.monat-1]} ${latest.jahr}`;
+
+  const kpis = [
+    ['kpi-355','kpi-355d', '355', 't1'],
+    ['kpi-bund','kpi-bundd','9003','t2'],
+    ['kpi-laend','kpi-laendd','9006','t2'],
+    ['kpi-gem','kpi-gemd','9007','t2'],
+  ];
+  kpis.forEach(([vi,di,key,sub]) => {
+    const v = latest[sub][key];
+    const p = prev ? prev[sub][key] : null;
+    document.getElementById(vi).textContent = fmtMrd(v);
+    const d = p ? pct(v,p) : null;
+    const de = document.getElementById(di);
+    if (d!=null) {
+      de.textContent = (d>=0?'▲ +':'▼ ')+Math.abs(d).toFixed(1)+'% ggü. Vorjahr';
+      de.className = 'kpi-delta '+(d>=0?'pos':'neg');
+    } else { de.textContent=''; }
+  });
+  document.getElementById('hs-173').textContent = fmtMrd(latest.t1['173']);
+  document.getElementById('hs-174').textContent = fmtMrd(latest.t1['174']);
+  document.getElementById('hs-175').textContent = fmtMrd(latest.t1['175']);
+  document.getElementById('hs-bund').textContent = fmtMrd(latest.t2['9003']);
+  document.getElementById('hs-laend').textContent = fmtMrd(latest.t2['9006']);
+  document.getElementById('hs-eu').textContent   = fmtMrd(latest.t2['256']);
+
+  // Mini charts – last 12 available months
+  const last12 = avail.slice(0,12).reverse();
+  const labels = last12.map(r=>MONTHS[r.monat-1]+"'"+String(r.jahr).slice(2));
+  renderMini('miniChart1', miniC1, labels, [
+    {label:'Gemeinschaftl.',data:last12.map(r=>r.t1['173']/1e6),color:'#1e3f72'},
+    {label:'Bundessteuern',data:last12.map(r=>r.t1['174']/1e6),color:'#c8922a'},
+    {label:'Ländersteuern',data:last12.map(r=>r.t1['175']/1e6),color:'#5a7090'},
+  ]);
+  renderMini('miniChart2', miniC2, labels, [
+    {label:'Bund',  data:last12.map(r=>r.t2['9003']/1e6),color:'#1e3f72'},
+    {label:'Länder',data:last12.map(r=>r.t2['9006']/1e6),color:'#c8922a'},
+    {label:'EU',   data:last12.map(r=>r.t2['256']/1e6), color:'#2a7a4a'},
+  ]);
+}
+function renderMini(id, existing, labels, datasets) {
+  if (existing) existing.destroy();
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const c = new Chart(ctx, {
+    type:'bar',
+    data: { labels, datasets: datasets.map(d=>({
+      label:d.label, data:d.data,
+      backgroundColor:d.color+'99', borderColor:d.color, borderWidth:1,
+      borderRadius:2, barPercentage:0.6,
+    }))},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw.toFixed(1)+' Mrd. €'}}},
+      scales:{x:{display:false,stacked:true},y:{display:false,stacked:true}},
+    }
+  });
+  if (id==='miniChart1') miniC1=c; else miniC2=c;
+}
+
+// ────── TABELLE 1 ──────
+const T1_ROWS = [
+  {type:'section', label:'I. Gemeinschaftliche Steuern'},
+  {type:'agg', id:'173', label:'Gemeinschaftliche Steuern insgesamt', indent:0},
+  {type:'sub', id:'119', label:'Lohnsteuer', indent:1},
+  {type:'sub', id:'120', label:'veranlagte Einkommensteuer', indent:1},
+  {type:'sub', id:'121', label:'nicht veranlagte Steuern v. Ertrag', indent:1},
+  {type:'sub', id:'122', label:'Abgeltungsteuer', indent:1},
+  {type:'sub', id:'123', label:'Körperschaftsteuer', indent:1},
+  {type:'sub', id:'5614', label:'Mindeststeuer', indent:1},
+  {type:'sub', id:'124', label:'Steuern vom Umsatz', indent:1},
+  {type:'sub2',id:'125', label:'davon: Umsatzsteuer', indent:2},
+  {type:'sub2',id:'126', label:'davon: Einfuhrumsatzsteuer', indent:2},
+  {type:'section', label:'II. Gewerbesteuerumlagen'},
+  {type:'agg', id:'794', label:'Gewerbesteuerumlagen insgesamt', indent:0},
+  {type:'sub', id:'150', label:'Gewerbesteuerumlage', indent:1},
+  {type:'sub', id:'151', label:'erhöhte Gewerbesteuerumlage', indent:1},
+  {type:'section', label:'III. Bundessteuern'},
+  {type:'agg', id:'174', label:'Bundessteuern insgesamt', indent:0},
+  {type:'sub', id:'138', label:'Energiesteuer', indent:1},
+  {type:'sub', id:'147', label:'Solidaritätszuschlag', indent:1},
+  {type:'sub', id:'140', label:'Tabaksteuer', indent:1},
+  {type:'sub', id:'142', label:'Versicherungsteuer', indent:1},
+  {type:'sub', id:'127', label:'Kraftfahrzeugsteuer', indent:1},
+  {type:'sub', id:'139', label:'Stromsteuer', indent:1},
+  {type:'sub', id:'141', label:'Alkoholsteuer', indent:1},
+  {type:'sub', id:'760', label:'Luftverkehrsteuer', indent:1},
+  {type:'sub', id:'5609', label:'EU-Energiekrisenbeitrag', indent:1},
+  {type:'sub', id:'143', label:'Kaffeesteuer', indent:1},
+  {type:'sub', id:'144', label:'Schaumweinsteuer', indent:1},
+  {type:'sub', id:'145', label:'Zwischenerzeugnissteuer', indent:1},
+  {type:'sub', id:'146', label:'Alkopopsteuer', indent:1},
+  {type:'sub', id:'148', label:'Pauschalierte Einfuhrabgabe', indent:1},
+  {type:'sub', id:'149', label:'sonstige Bundessteuern', indent:1},
+  {type:'section', label:'IV. Ländersteuern'},
+  {type:'agg', id:'175', label:'Ländersteuern insgesamt', indent:0},
+  {type:'sub', id:'130', label:'Grunderwerbsteuer', indent:1},
+  {type:'sub', id:'131', label:'Erbschaftsteuer', indent:1},
+  {type:'sub', id:'132', label:'Rennwett- und Lotteriesteuer', indent:1},
+  {type:'sub', id:'129', label:'Biersteuer', indent:1},
+  {type:'sub', id:'133', label:'Feuerschutzsteuer', indent:1},
+  {type:'sub', id:'128', label:'Vermögensteuer', indent:1},
+  {type:'sub', id:'261', label:'sonstige Ländersteuern', indent:1},
+  {type:'section', label:'V. Zölle'},
+  {type:'sub', id:'219', label:'Zölle', indent:0},
+  {type:'total', id:'355', label:'Steuern insgesamt ohne Gemeindesteuern'},
+];
+
+function renderT1() {
+  const agg = state.t1.agg;
+  const jahr = +document.getElementById('t1-jahr').value;
+  const monat = +document.getElementById('t1-monat').value;
+  const quartal = +(document.getElementById('t1-quartal')||{value:1}).value;
+  const cur = getAggData('t1', agg, jahr, monat, quartal);
+  const prv = getPrevData('t1', agg, jahr, monat, quartal);
+  if (!cur) { document.getElementById('tableT1').innerHTML='<tr><td style="padding:2rem;color:#888">Keine Daten für diesen Zeitraum</td></tr>'; return; }
+
+  // Chart
+  const tsData = buildTimeSeries('t1', agg, jahr);
+  renderMainChart('chartT1', chartT1, tsData, ['173','174','175'], ['Gemeinschaftl.','Bundessteuern','Ländersteuern'], c => { chartT1=c; });
+
+  // Table
+  const t = document.getElementById('tableT1');
+  let head = `<thead><tr>
+    <th style="min-width:280px;text-align:left">Position</th>
+    <th>Einnahmen (Tsd. €)</th>
+    <th>Vorjahr (Tsd. €)</th>
+    <th>Δ abs. (Tsd. €)</th>
+    <th>Δ %</th>
+  </tr></thead><tbody>`;
+  let body = '';
+  T1_ROWS.forEach(row => {
+    if (row.type==='section') {
+      body += `<tr class="row-section-header"><td colspan="5">${row.label}</td></tr>`;
+      return;
+    }
+    const v = cur[row.id]||0;
+    const p = prv ? (prv[row.id]||0) : null;
+    const da = p!=null ? v-p : null;
+    const dp = p!=null ? pct(v,p) : null;
+    const cls = row.type==='total'?'row-total':row.type==='agg'?'row-agg':row.type==='agg2'?'row-agg2':'row-sub';
+    const indClass = row.indent===1?'indent1':row.indent===2?'indent2':'';
+    const numCls = v<0 ? 'num-neg':'';
+    const daCls = da!=null ? (da>=0?'delta-pos':'delta-neg'):'';
+    body += `<tr class="${cls} row-clickable" onclick="openDetail('${row.id}','${row.label.replace(/'/g,"\\'")}')">
+      <td class="label-col ${indClass}">${row.label} <span style="font-size:0.65rem;color:var(--muted);font-family:var(--mono)">↗</span></td>
+      <td class="${numCls}">${fmt(v)}</td>
+      <td>${p!=null?fmt(p):'–'}</td>
+      <td class="delta-cell ${daCls}">${da!=null?fmt(da):'–'}</td>
+      <td class="delta-cell ${daCls}">${dp!=null?(dp>=0?'+':'')+dp.toFixed(1)+'%':'–'}</td>
+    </tr>`;
+  });
+  t.innerHTML = head + body + '</tbody>';
+}
+
+// ────── TABELLE 2 ──────
+const T2_ROWS = [
+  {type:'section', label:'BUND'},
+  {type:'sub',  id:'9001', label:'Bundesanteil gemeinschaftl. Steuern'},
+  {type:'sub',  id:'174b', label:'Bundessteuern'},
+  {type:'sub',  id:'150b', label:'Gewerbesteuerumlage'},
+  {type:'sub',  id:'abzug_eu', label:'EU-Eigenmittel ohne Zölle'},
+  {type:'sub',  id:'677b', label:'Kfz-Kompensation'},
+  {type:'sub',  id:'212b', label:'Regionalisierungsmittel'},
+  {type:'sub',  id:'720b', label:'Konsolidierungshilfen'},
+  {type:'agg',  id:'9002', label:'Steuereinnahmen des Bundes vor BEZ'},
+  {type:'sub',  id:'158b', label:'Bundesergänzungszuweisungen'},
+  {type:'agg2', id:'9003', label:'Steuereinnahmen des Bundes nach BEZ'},
+  {type:'section', label:'LÄNDER'},
+  {type:'sub',  id:'9004', label:'Länderanteil gemeinschaftl. Steuern'},
+  {type:'sub',  id:'175l', label:'Ländersteuern'},
+  {type:'sub',  id:'150l', label:'Gewerbesteuerumlage'},
+  {type:'sub',  id:'151l', label:'erhöhte GewSt-Umlage'},
+  {type:'sub',  id:'677l', label:'Kfz-Kompensation'},
+  {type:'sub',  id:'720l', label:'Konsolidierungshilfen'},
+  {type:'sub',  id:'212l', label:'Regionalisierungsmittel'},
+  {type:'agg',  id:'9005', label:'Steuereinnahmen der Länder vor BEZ'},
+  {type:'sub',  id:'158l', label:'Bundesergänzungszuweisungen'},
+  {type:'agg2', id:'9006', label:'Steuereinnahmen der Länder nach BEZ'},
+  {type:'section', label:'EU-EIGENMITTEL'},
+  {type:'sub',  id:'219eu', label:'Zölle'},
+  {type:'sub',  id:'211eu', label:'MWSt-Eigenmittel'},
+  {type:'sub',  id:'210eu', label:'BNE-Eigenmittel'},
+  {type:'sub',  id:'5592eu',label:'Kunststoff-Eigenmittel'},
+  {type:'agg2', id:'256',   label:'EU-Eigenmittel insgesamt'},
+  {type:'section', label:'GEMEINDEN'},
+  {type:'agg2', id:'9007', label:'Gemeindeanteil gemeinschaftl. Steuern'},
+];
+
+function renderT2() {
+  const agg = state.t2.agg;
+  const jahr = +document.getElementById('t2-jahr').value;
+  const monat = +document.getElementById('t2-monat').value;
+  const quartal = +(document.getElementById('t2-quartal')||{value:1}).value;
+  const cur = getAggData('t2', agg, jahr, monat, quartal);
+  const prv = getPrevData('t2', agg, jahr, monat, quartal);
+  if (!cur) { document.getElementById('tableT2').innerHTML='<tr><td style="padding:2rem;color:#888">Keine Daten für diesen Zeitraum</td></tr>'; return; }
+
+  const tsData = buildTimeSeries('t2', agg, jahr);
+  renderMainChart('chartT2', chartT2, tsData, ['9003','9006','256','9007'], ['Bund','Länder','EU','Gemeinden'], c=>{chartT2=c;});
+
+  const t = document.getElementById('tableT2');
+  let head = `<thead><tr>
+    <th style="min-width:320px;text-align:left">Position</th>
+    <th>Betrag (Tsd. €)</th>
+    <th>Vorjahr (Tsd. €)</th>
+    <th>Δ abs. (Tsd. €)</th>
+    <th>Δ %</th>
+  </tr></thead><tbody>`;
+  let body = '';
+  T2_ROWS.forEach(row => {
+    if (row.type==='section') {
+      body += `<tr class="row-section-header"><td colspan="5">${row.label}</td></tr>`;
+      return;
+    }
+    const v = cur[row.id]||0;
+    const p = prv ? (prv[row.id]||0) : null;
+    const da = p!=null ? v-p : null;
+    const dp = p!=null ? pct(v,p) : null;
+    const cls = row.type==='total'?'row-total':row.type==='agg2'?'row-agg2':row.type==='agg'?'row-agg':'row-sub';
+    const numCls = v<0 ? 'num-neg':'';
+    const daCls = da!=null ? (da>=0?'delta-pos':'delta-neg'):'';
+    body += `<tr class="${cls} row-clickable" onclick="openDetail('${row.id}','${row.label.replace(/'/g,"\\'")}','t2')">
+      <td class="label-col">${row.label} <span style="font-size:0.65rem;color:var(--muted);font-family:var(--mono)">↗</span></td>
+      <td class="${numCls}">${fmt(v)}</td>
+      <td>${p!=null?fmt(p):'–'}</td>
+      <td class="delta-cell ${daCls}">${da!=null?fmt(da):'–'}</td>
+      <td class="delta-cell ${daCls}">${dp!=null?(dp>=0?'+':'')+dp.toFixed(1)+'%':'–'}</td>
+    </tr>`;
+  });
+  t.innerHTML = head + body + '</tbody>';
+}
+
+// ────── CHARTS ──────
+const COLORS = ['#1e3f72','#c8922a','#2a7a4a','#7a2a6a','#2a6a7a'];
+
+function buildTimeSeries(table, agg, jahr) {
+  if (agg==='M') {
+    return Array.from({length:12},(_,i)=>i+1).map(m => {
+      const r = getData(jahr,m); return r ? r[table] : null;
+    });
+  } else if (agg==='Q') {
+    return [1,2,3,4].map(q => getAggData(table,agg,jahr,1,q));
+  } else if (agg==='Y') {
+    return Array.from({length:27},(_,i)=>2000+i).map(y => getAggData(table,agg,y,1,1));
+  } else if (agg==='C') {
+    return Array.from({length:12},(_,i)=>i+1).map(m => getAggData(table,'C',jahr,m,1));
+  }
+}
+function buildLabels(agg, jahr) {
+  if (agg==='M') return MONTHS.map(m=>m+"'"+String(jahr).slice(2));
+  if (agg==='Q') return ['Q1','Q2','Q3','Q4'].map(q=>q+' '+jahr);
+  if (agg==='Y') return Array.from({length:27},(_,i)=>String(2000+i));
+  if (agg==='C') return MONTHS.map(m=>m+"'"+String(jahr).slice(2));
+}
+
+function renderMainChart(canvasId, existing, tsData, keys, labels, cb) {
+  if (existing) { try{existing.destroy();}catch(e){} }
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  const agg = canvasId.includes('T1') ? state.t1.agg : state.t2.agg;
+  const jahr = +(canvasId.includes('T1') ? document.getElementById('t1-jahr').value : document.getElementById('t2-jahr').value);
+  const chartLabels = buildLabels(agg, jahr);
+
+  // Bar datasets (stacked) + Line for total/key metric
+  const barKeys = keys.slice(0, keys.length);
+  const datasets = barKeys.map((k,i) => ({
+    type: 'bar',
+    label: labels[i],
+    data: tsData.map(r => r ? (r[k]||0)/1e6 : null),
+    backgroundColor: COLORS[i]+'aa',
+    borderColor: COLORS[i],
+    borderWidth: 1,
+    borderRadius: 2,
+    stack: 'stack',
+    yAxisID: 'y',
+  }));
+
+  const c = new Chart(ctx, {
+    data: { labels: chartLabels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: {duration: 300},
+      plugins: {
+        legend: { position:'top', labels:{boxWidth:12,font:{size:11},color:'#0d2240'} },
+        tooltip: { callbacks: { label: c => c.dataset.label+': '+c.raw?.toFixed(1)+' Mrd. €' } }
+      },
+      scales: {
+        x: { stacked:true, ticks:{font:{size:10}}, grid:{display:false} },
+        y: { stacked:true, ticks:{callback:v=>v.toFixed(0)+' Mrd. €', font:{size:10}}, grid:{color:'#e2e8f0'} }
+      }
+    }
+  });
+  cb(c);
+}
+
+// ────── DETAIL VIEW ──────
+const MAX_SERIES = 5;
+const DET_COLORS = ['#1e3f72','#c8922a','#2a7a4a','#8b2a7a','#7a4a2a'];
+
+// Series registry: {id, label, table, color}
+const detSeries = [];
+const detState  = { agg:'M', unit:'abs', table:'t1' };
+let chartDetAbs = null, chartDetPct = null;
+
+// All available rows for T1 and T2, grouped for the sidebar
+const SIDEBAR_ROWS_T1 = [
+  {type:'section', label:'I. Gemeinschaftliche Steuern'},
+  {type:'agg',   id:'173',   label:'Gemeinschaftliche Steuern insgesamt', indent:0},
+  {type:'sub',   id:'119',   label:'Lohnsteuer', indent:1},
+  {type:'sub',   id:'120',   label:'veranlagte Einkommensteuer', indent:1},
+  {type:'sub',   id:'121',   label:'nicht veranlagte Steuern v. Ertrag', indent:1},
+  {type:'sub',   id:'122',   label:'Abgeltungsteuer', indent:1},
+  {type:'sub',   id:'123',   label:'Körperschaftsteuer', indent:1},
+  {type:'sub',   id:'5614',  label:'Mindeststeuer', indent:1},
+  {type:'sub',   id:'124',   label:'Steuern vom Umsatz', indent:1},
+  {type:'sub2',  id:'125',   label:'davon: Umsatzsteuer', indent:2},
+  {type:'sub2',  id:'126',   label:'davon: Einfuhrumsatzsteuer', indent:2},
+  {type:'section', label:'II. Gewerbesteuerumlagen'},
+  {type:'agg',   id:'794',   label:'Gewerbesteuerumlagen insgesamt', indent:0},
+  {type:'sub',   id:'150',   label:'Gewerbesteuerumlage', indent:1},
+  {type:'sub',   id:'151',   label:'erhöhte Gewerbesteuerumlage', indent:1},
+  {type:'section', label:'III. Bundessteuern'},
+  {type:'agg',   id:'174',   label:'Bundessteuern insgesamt', indent:0},
+  {type:'sub',   id:'138',   label:'Energiesteuer', indent:1},
+  {type:'sub',   id:'147',   label:'Solidaritätszuschlag', indent:1},
+  {type:'sub',   id:'140',   label:'Tabaksteuer', indent:1},
+  {type:'sub',   id:'142',   label:'Versicherungsteuer', indent:1},
+  {type:'sub',   id:'127',   label:'Kraftfahrzeugsteuer', indent:1},
+  {type:'sub',   id:'139',   label:'Stromsteuer', indent:1},
+  {type:'sub',   id:'141',   label:'Alkoholsteuer', indent:1},
+  {type:'sub',   id:'760',   label:'Luftverkehrsteuer', indent:1},
+  {type:'sub',   id:'5609',  label:'EU-Energiekrisenbeitrag', indent:1},
+  {type:'sub',   id:'143',   label:'Kaffeesteuer', indent:1},
+  {type:'sub',   id:'144',   label:'Schaumweinsteuer', indent:1},
+  {type:'sub',   id:'145',   label:'Zwischenerzeugnissteuer', indent:1},
+  {type:'sub',   id:'146',   label:'Alkopopsteuer', indent:1},
+  {type:'sub',   id:'148',   label:'Pauschalierte Einfuhrabgabe', indent:1},
+  {type:'sub',   id:'149',   label:'sonstige Bundessteuern', indent:1},
+  {type:'section', label:'IV. Ländersteuern'},
+  {type:'agg',   id:'175',   label:'Ländersteuern insgesamt', indent:0},
+  {type:'sub',   id:'130',   label:'Grunderwerbsteuer', indent:1},
+  {type:'sub',   id:'131',   label:'Erbschaftsteuer', indent:1},
+  {type:'sub',   id:'132',   label:'Rennwett- und Lotteriesteuer', indent:1},
+  {type:'sub',   id:'129',   label:'Biersteuer', indent:1},
+  {type:'sub',   id:'133',   label:'Feuerschutzsteuer', indent:1},
+  {type:'sub',   id:'128',   label:'Vermögensteuer', indent:1},
+  {type:'sub',   id:'261',   label:'sonstige Ländersteuern', indent:1},
+  {type:'section', label:'V. Zölle'},
+  {type:'sub',   id:'219',   label:'Zölle', indent:0},
+  {type:'total', id:'355',   label:'Steuern insgesamt ohne Gemeindesteuern', indent:0},
+];
+const SIDEBAR_ROWS_T2 = [
+  {type:'section', label:'BUND'},
+  {type:'sub',   id:'9001',  label:'Bundesanteil gemeinschaftl. Steuern'},
+  {type:'sub',   id:'174b',  label:'Bundessteuern'},
+  {type:'sub',   id:'150b',  label:'Gewerbesteuerumlage'},
+  {type:'sub',   id:'abzug_eu', label:'EU-Eigenmittel ohne Zölle (Abzug)'},
+  {type:'sub',   id:'677b',  label:'Kfz-Kompensation'},
+  {type:'sub',   id:'212b',  label:'Regionalisierungsmittel'},
+  {type:'sub',   id:'720b',  label:'Konsolidierungshilfen'},
+  {type:'agg',   id:'9002',  label:'Steuereinnahmen Bund vor BEZ'},
+  {type:'sub',   id:'158b',  label:'Bundesergänzungszuweisungen'},
+  {type:'agg',   id:'9003',  label:'Steuereinnahmen Bund nach BEZ'},
+  {type:'section', label:'LÄNDER'},
+  {type:'sub',   id:'9004',  label:'Länderanteil gemeinschaftl. Steuern'},
+  {type:'sub',   id:'175l',  label:'Ländersteuern'},
+  {type:'sub',   id:'150l',  label:'Gewerbesteuerumlage'},
+  {type:'sub',   id:'151l',  label:'erhöhte GewSt-Umlage'},
+  {type:'sub',   id:'677l',  label:'Kfz-Kompensation'},
+  {type:'sub',   id:'720l',  label:'Konsolidierungshilfen'},
+  {type:'sub',   id:'212l',  label:'Regionalisierungsmittel'},
+  {type:'agg',   id:'9005',  label:'Steuereinnahmen Länder vor BEZ'},
+  {type:'sub',   id:'158l',  label:'Bundesergänzungszuweisungen'},
+  {type:'agg',   id:'9006',  label:'Steuereinnahmen Länder nach BEZ'},
+  {type:'section', label:'EU-EIGENMITTEL'},
+  {type:'sub',   id:'219eu', label:'Zölle'},
+  {type:'sub',   id:'211eu', label:'MWSt-Eigenmittel'},
+  {type:'sub',   id:'210eu', label:'BNE-Eigenmittel'},
+  {type:'sub',   id:'5592eu',label:'Kunststoff-Eigenmittel'},
+  {type:'agg',   id:'256',   label:'EU-Eigenmittel insgesamt'},
+  {type:'section', label:'GEMEINDEN'},
+  {type:'agg',   id:'9007',  label:'Gemeindeanteil gemeinschaftl. Steuern'},
+];
+
+function openDetail(id, label, table) {
+  detState.table = table || 't1';
+  // Set back button
+  document.getElementById('det-back-btn').textContent = '← ' + (detState.table==='t2' ? 'Tabelle 2' : 'Tabelle 1');
+  document.getElementById('det-back-btn').onclick = () =>
+    showView(detState.table, document.querySelector(`nav button:nth-child(${detState.table==='t2'?3:2})`));
+  // Update subtitle
+  document.getElementById('det-sub').textContent =
+    (detState.table==='t2' ? 'Tabelle 2 – Gebietskörperschaften' : 'Tabelle 1 – Steuerarten') +
+    ' · Alle Angaben in Tsd. Euro';
+  // Start with just this series
+  detSeries.length = 0;
+  detSeries.push({ id, label, table: detState.table, color: DET_COLORS[0] });
+  // Show nav button and switch view
+  const navBtn = document.getElementById('nav-detail');
+  navBtn.style.display = '';
+  // Switch view first so DOM is visible, then render
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-detail').classList.add('active');
+  navBtn.classList.add('active');
+  renderDetail();
+}
+
+function toggleSeries(id, label, table) {
+  const idx = detSeries.findIndex(s => s.id===id && s.table===table);
+  if (idx >= 0) {
+    detSeries.splice(idx, 1);
+    detSeries.forEach((s,i) => s.color = DET_COLORS[i]);
+  } else {
+    if (detSeries.length >= MAX_SERIES) return;
+    detSeries.push({ id, label, table, color: DET_COLORS[detSeries.length] });
+  }
+  renderDetail();
+}
+
+function buildSidebar() {
+  const sidebar = document.getElementById('det-sidebar');
+  const rows = detState.table === 't2' ? SIDEBAR_ROWS_T2 : SIDEBAR_ROWS_T1;
+  const atMax = detSeries.length >= MAX_SERIES;
+  sidebar.innerHTML = '';
+  rows.forEach(row => {
+    if (row.type === 'section') {
+      const hdr = document.createElement('div');
+      hdr.className = 'sidebar-section-hdr';
+      hdr.textContent = row.label;
+      sidebar.appendChild(hdr);
+      return;
+    }
+    const active = detSeries.find(s => s.id === row.id && s.table === detState.table);
+    const locked = !active && atMax;
+    const indentCls = row.indent === 2 ? 'indent2' : row.indent === 1 ? 'indent1' : '';
+    const typeCls   = row.type === 'total' ? 'total-row' : row.type === 'agg' ? 'agg-row' : '';
+    const el = document.createElement('label');
+    el.className = ['sidebar-item', indentCls, typeCls, locked ? 'disabled' : ''].filter(Boolean).join(' ');
+    // Checkbox
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!active;
+    cb.disabled = !!locked;
+    if (!locked) {
+      cb.addEventListener('change', (e) => {
+        e.stopPropagation();
+        toggleSeries(row.id, row.label, detState.table);
+      });
+    }
+    // Color dot
+    const dot = document.createElement('span');
+    dot.className = 'sidebar-color-dot';
+    if (active) {
+      dot.style.cssText = `display:inline-block;background:${active.color};border:2px solid ${active.color}33`;
+    }
+    // Label text
+    const txt = document.createElement('span');
+    txt.textContent = row.label;
+    el.appendChild(cb);
+    el.appendChild(dot);
+    el.appendChild(txt);
+    sidebar.appendChild(el);
+  });
+  // Update counter
+  const cnt = document.getElementById('det-series-count');
+  if (cnt) cnt.textContent = `${detSeries.length} / ${MAX_SERIES} Datenreihen`;
+  // Update title
+  const titleEl = document.getElementById('det-title');
+  if (titleEl) {
+    titleEl.textContent = detSeries.length === 1
+      ? detSeries[0].label
+      : `Vergleich: ${detSeries.length} Datenreihen`;
+  }
+}
+
+function setDetAgg(agg, btn) {
+  detState.agg = agg;
+  btn.closest('.mode-btns').querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDetail();
+}
+function setDetUnit(unit, btn) {
+  detState.unit = unit;
+  btn.closest('.mode-btns').querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDetail();
+}
+
+function getSeriesData(id, table) {
+  const von = +document.getElementById('det-von').value;
+  const bis = +document.getElementById('det-bis').value;
+  const agg = detState.agg;
+  const labels = [], absVals = [], pctVals = [], incomplete = [];
+  const hasData = (r) => r.t1['355'] !== 0;
+  const latestYear  = Math.max(...RAW.filter(hasData).map(r=>r.jahr));
+  const latestMonths = RAW.filter(r=>r.jahr===latestYear && hasData(r)).length;
+  const isYearInc = (y) => y===latestYear && latestMonths<12;
+  const val = (r) => (r[table][id] || 0);
+
+  if (agg==='M') {
+    RAW.filter(r=>r.jahr>=von && r.jahr<=bis && hasData(r)).forEach(r=>{
+      const v=val(r), prev=RAW.find(p=>p.jahr===r.jahr-1&&p.monat===r.monat), pv=prev?val(prev):null;
+      labels.push(MONTHS[r.monat-1]+"'"+String(r.jahr).slice(2));
+      absVals.push(v); incomplete.push(false);
+      pctVals.push(pv&&pv!==0?((v-pv)/Math.abs(pv))*100:null);
+    });
+  } else if (agg==='Q') {
+    for(let y=von;y<=bis;y++) for(let q=1;q<=4;q++){
+      const ms=RAW.filter(r=>r.jahr===y&&r.monat>=(q-1)*3+1&&r.monat<=(q-1)*3+3&&hasData(r));
+      if(!ms.length) continue;
+      const v=ms.reduce((s,r)=>s+val(r),0);
+      const pm=RAW.filter(r=>r.jahr===y-1&&r.monat>=(q-1)*3+1&&r.monat<=(q-1)*3+3&&hasData(r));
+      const pv=pm.length===ms.length?pm.reduce((s,r)=>s+val(r),0):null;
+      labels.push(`Q${q} ${y}`); absVals.push(v);
+      incomplete.push(isYearInc(y)&&ms.length<3);
+      pctVals.push(pv&&pv!==0?((v-pv)/Math.abs(pv))*100:null);
+    }
+  } else {
+    for(let y=von;y<=bis;y++){
+      const ms=RAW.filter(r=>r.jahr===y&&hasData(r));
+      if(!ms.length) continue;
+      const v=ms.reduce((s,r)=>s+val(r),0);
+      const pm=RAW.filter(r=>r.jahr===y-1&&hasData(r));
+      const pv=pm.length?pm.reduce((s,r)=>s+val(r),0):null;
+      labels.push(String(y)); absVals.push(v);
+      incomplete.push(isYearInc(y));
+      pctVals.push(pv&&pv!==0?((v-pv)/Math.abs(pv))*100:null);
+    }
+  }
+  return { labels, absVals, pctVals, incomplete };
+}
+
+function renderDetail() {
+  if (!detSeries.length) return;
+  buildSidebar();
+  const divisor  = detState.unit==='mrd' ? 1e6 : 1;
+  const unitLabel = detState.unit==='mrd' ? 'Mrd. €' : 'Tsd. €';
+  const base = getSeriesData(detSeries[0].id, detSeries[0].table);
+  const labels = base.labels;
+
+  // Build datasets for each series
+  const absDatasets = detSeries.map(s => {
+    const d = getSeriesData(s.id, s.table);
+    const borderColors = d.incomplete.map(f => f ? '#c8922a' : s.color);
+    return {
+      type:'line', label:s.label,
+      data: d.absVals.map(v=>v/divisor),
+      borderColor: s.color, backgroundColor: s.color+'22',
+      borderWidth:2, tension:0.3, fill:false,
+      pointRadius: labels.length>60 ? 0 : 3,
+      pointHoverRadius:5,
+      pointBackgroundColor: borderColors,
+      pointBorderColor: borderColors,
+      segment:{ borderColor: ctx => d.incomplete[ctx.p1DataIndex] ? '#c8922a' : s.color },
+    };
+  });
+
+  const pctDatasets = detSeries.map(s => {
+    const d = getSeriesData(s.id, s.table);
+    return {
+      type:'bar', label:s.label,
+      data: d.pctVals,
+      backgroundColor: d.pctVals.map((v,i) => v===null?'#ccc': d.incomplete[i]?'#c8922a99': v>=0?s.color+'99':s.color+'66'),
+      borderColor: d.pctVals.map((v,i) => v===null?'#bbb': d.incomplete[i]?'#c8922a': s.color),
+      borderWidth:1, borderRadius:2,
+    };
+  });
+
+  // ── Absolut ──
+  if (chartDetAbs) { try{chartDetAbs.destroy();}catch(e){} chartDetAbs=null; }
+  const ctx1 = document.getElementById('chartDetAbs');
+  chartDetAbs = new Chart(ctx1, {
+    data:{ labels, datasets:absDatasets },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:200},
+      plugins:{
+        legend:{ display: detSeries.length>1, position:'top',
+          labels:{boxWidth:12,font:{size:11},color:'#0d2240'}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.raw?.toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1})} ${unitLabel}`}}
+      },
+      scales:{
+        x:{ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:30},grid:{display:false}},
+        y:{ticks:{callback:v=>v.toLocaleString('de-DE',{minimumFractionDigits:0,maximumFractionDigits:0})+' '+unitLabel,font:{size:9}},grid:{color:'#e2e8f0'}}
+      }
+    }
+  });
+
+  // ── Veränderungsrate ──
+  if (chartDetPct) { try{chartDetPct.destroy();}catch(e){} chartDetPct=null; }
+  const ctx2 = document.getElementById('chartDetPct');
+  chartDetPct = new Chart(ctx2, {
+    data:{ labels, datasets:pctDatasets },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:200},
+      plugins:{
+        legend:{ display: detSeries.length>1, position:'top',
+          labels:{boxWidth:12,font:{size:11},color:'#0d2240'}},
+        tooltip:{callbacks:{label:c=>c.raw!==null?(c.raw>=0?'+':'')+c.raw.toFixed(1)+'%':'k.A.'}}
+      },
+      scales:{
+        x:{ticks:{font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:30},grid:{display:false}},
+        y:{ticks:{callback:v=>v.toFixed(0)+'%',font:{size:9}},grid:{color:'#e2e8f0'},
+          afterDataLimits:axis=>{axis.min=Math.min(axis.min,-5);}}
+      }
+    }
+  });
+}
+
+// ────── EXPORT ──────
+function downloadCSV(content, filename) {
+  const bom = '\uFEFF'; // UTF-8 BOM für Excel
+  const blob = new Blob([bom + content], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function fileTimestamp() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+}
+
+function csvEscape(v) {
+  const s = String(v ?? '');
+  return s.includes(';') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g,'""')}"` : s;
+}
+
+function fmtNum(v) {
+  if (v == null || isNaN(v)) return '';
+  // German decimal format for Excel compatibility
+  return v.toFixed(3).replace('.', ',');
+}
+
+// Export current Table 1 or Table 2 view as CSV
+function exportTableCSV(tbl) {
+  const agg     = state[tbl].agg;
+  const jahr    = +document.getElementById(`${tbl}-jahr`).value;
+  const monat   = +document.getElementById(`${tbl}-monat`).value;
+  const quartal = +((document.getElementById(`${tbl}-quartal`) || {value:1}).value);
+  const cur     = getAggData(tbl, agg, jahr, monat, quartal);
+  const prv     = getPrevData(tbl, agg, jahr, monat, quartal);
+  if (!cur) return;
+
+  const rows = tbl === 't1' ? T1_ROWS : T2_ROWS;
+  const aggLabel = agg==='M' ? `${MONTHS_LONG[monat-1]} ${jahr}`
+                 : agg==='Q' ? `Q${quartal} ${jahr}`
+                 : agg==='Y' ? `Jahr ${jahr}`
+                 : `Jan–${MONTHS_LONG[monat-1]} ${jahr} (kumuliert)`;
+
+  const prevLabel = agg==='M' ? `${MONTHS_LONG[monat-1]} ${jahr-1}`
+                  : agg==='Q' ? `Q${quartal} ${jahr-1}`
+                  : agg==='Y' ? `Jahr ${jahr-1}`
+                  : `Jan–${MONTHS_LONG[monat-1]} ${jahr-1} (kumuliert)`;
+
+  const lines = [];
+  // Header
+  lines.push([
+    'Position',
+    `${aggLabel} (Tsd. Euro)`,
+    `${prevLabel} (Tsd. Euro)`,
+    'Veränderung abs. (Tsd. Euro)',
+    'Veränderung (%)'
+  ].map(csvEscape).join(';'));
+
+  rows.forEach(row => {
+    if (row.type === 'section') {
+      lines.push([csvEscape(row.label), '', '', '', ''].join(';'));
+      return;
+    }
+    const v  = cur[row.id] || 0;
+    const p  = prv ? (prv[row.id] || 0) : null;
+    const da = p != null ? v - p : null;
+    const dp = p != null && p !== 0 ? ((v - p) / Math.abs(p)) * 100 : null;
+    lines.push([
+      csvEscape(row.label),
+      fmtNum(v),
+      p != null ? fmtNum(p) : '',
+      da != null ? fmtNum(da) : '',
+      dp != null ? fmtNum(dp) : ''
+    ].join(';'));
+  });
+
+  const tabName = tbl === 't1' ? 'Tabelle1_Steuerarten' : 'Tabelle2_Gebietskoerperschaften';
+  const aggSlug = agg==='M' ? `${jahr}_${String(monat).padStart(2,'0')}`
+                : agg==='Q' ? `${jahr}_Q${quartal}`
+                : agg==='Y' ? `${jahr}`
+                : `${jahr}_Jan-${String(monat).padStart(2,'0')}_kum`;
+  downloadCSV(lines.join('\r\n'), `Steueraufkommen_${tabName}_${aggSlug}_${fileTimestamp()}.csv`);
+}
+
+// Export detail view time series as CSV
+function exportDetailCSV() {
+  if (!detSeries.length) return;
+  const von = +document.getElementById('det-von').value;
+  const bis = +document.getElementById('det-bis').value;
+  const agg = detState.agg;
+
+  // Collect all series data
+  const allData = detSeries.map(s => getSeriesData(s.id, s.table));
+  const labels  = allData[0].labels;
+
+  const aggLabel = agg==='M' ? 'Monat' : agg==='Q' ? 'Quartal' : 'Jahr';
+  const lines = [];
+
+  // Header row
+  const headerCols = [aggLabel];
+  detSeries.forEach(s => {
+    headerCols.push(csvEscape(`${s.label} (Tsd. Euro)`));
+    headerCols.push(csvEscape(`${s.label} – Vj.-Änderung (%)`));
+  });
+  lines.push(headerCols.join(';'));
+
+  // Data rows
+  labels.forEach((lbl, i) => {
+    const row = [csvEscape(lbl)];
+    allData.forEach(d => {
+      row.push(fmtNum(d.absVals[i]));
+      row.push(d.pctVals[i] != null ? fmtNum(d.pctVals[i]) : '');
+    });
+    lines.push(row.join(';'));
+  });
+
+  const seriesSlug = detSeries.length === 1
+    ? detSeries[0].label.replace(/[^a-zA-Z0-9äöüÄÖÜ]/g, '_').slice(0, 40)
+    : `${detSeries.length}Reihen`;
+  const timeSlug = `${von}-${bis}_${aggLabel}`;
+  downloadCSV(lines.join('\r\n'), `Steueraufkommen_Zeitreihe_${seriesSlug}_${timeSlug}_${fileTimestamp()}.csv`);
+}
+
+// ── Excel Export (SheetJS) ──
+
+function getTableExportData(tbl) {
+  const agg     = state[tbl].agg;
+  const jahr    = +document.getElementById(`${tbl}-jahr`).value;
+  const monat   = +document.getElementById(`${tbl}-monat`).value;
+  const quartal = +((document.getElementById(`${tbl}-quartal`) || {value:1}).value);
+  const cur     = getAggData(tbl, agg, jahr, monat, quartal);
+  const prv     = getPrevData(tbl, agg, jahr, monat, quartal);
+  if (!cur) return null;
+
+  const rows = tbl === 't1' ? T1_ROWS : T2_ROWS;
+  const aggLabel = agg==='M' ? `${MONTHS_LONG[monat-1]} ${jahr}`
+                 : agg==='Q' ? `Q${quartal} ${jahr}`
+                 : agg==='Y' ? `Jahr ${jahr}`
+                 : `Jan–${MONTHS_LONG[monat-1]} ${jahr} (kum.)`;
+  const prevLabel = agg==='M' ? `${MONTHS_LONG[monat-1]} ${jahr-1}`
+                  : agg==='Q' ? `Q${quartal} ${jahr-1}`
+                  : agg==='Y' ? `Jahr ${jahr-1}`
+                  : `Jan–${MONTHS_LONG[monat-1]} ${jahr-1} (kum.)`;
+
+  const data = [['Position', `${aggLabel} (Tsd. €)`, `${prevLabel} (Tsd. €)`, 'Δ abs. (Tsd. €)', 'Δ (%)']];
+  rows.forEach(row => {
+    if (row.type === 'section') { data.push([row.label, null, null, null, null]); return; }
+    const v  = cur[row.id] || 0;
+    const p  = prv ? (prv[row.id] || 0) : null;
+    const da = p != null ? v - p : null;
+    const dp = p != null && p !== 0 ? ((v - p) / Math.abs(p)) * 100 : null;
+    data.push([row.label, v, p, da, dp != null ? dp / 100 : null]);
+  });
+  return { data, aggLabel, prevLabel };
+}
+
+function exportTableXLSX(tbl) {
+  if (!window.XLSX) { alert('SheetJS nicht geladen.'); return; }
+  const result = getTableExportData(tbl);
+  if (!result) return;
+  const { data, aggLabel } = result;
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(data);
+
+  // Column widths
+  ws['!cols'] = [{ wch: 48 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 12 }];
+
+  // Style header row and section rows via cell metadata
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = 0; R <= range.e.r; R++) {
+    const cell0 = ws[XLSX.utils.encode_cell({r:R, c:0})];
+    if (!cell0) continue;
+    // Numbers: columns 1-4
+    for (let C = 1; C <= 4; C++) {
+      const addr = XLSX.utils.encode_cell({r:R, c:C});
+      const cell = ws[addr];
+      if (!cell || cell.v == null) continue;
+      if (C === 4) {
+        // Percentage column
+        cell.t = 'n';
+        cell.z = '0.0%';
+      } else {
+        cell.t = 'n';
+        cell.z = '#,##0.000';
+      }
+    }
+  }
+
+  const tabName = tbl === 't1' ? 'Tabelle 1' : 'Tabelle 2';
+  XLSX.utils.book_append_sheet(wb, ws, tabName);
+
+  const agg     = state[tbl].agg;
+  const jahr    = +document.getElementById(`${tbl}-jahr`).value;
+  const monat   = +document.getElementById(`${tbl}-monat`).value;
+  const quartal = +((document.getElementById(`${tbl}-quartal`) || {value:1}).value);
+  const aggSlug = agg==='M' ? `${jahr}_${String(monat).padStart(2,'0')}`
+                : agg==='Q' ? `${jahr}_Q${quartal}`
+                : agg==='Y' ? `${jahr}`
+                : `${jahr}_kum`;
+  const slug = tbl === 't1' ? 'Tabelle1_Steuerarten' : 'Tabelle2_Gebietskoerperschaften';
+  XLSX.writeFile(wb, `Steueraufkommen_${slug}_${aggSlug}_${fileTimestamp()}.xlsx`);
+}
+
+function exportDetailXLSX() {
+  if (!window.XLSX) { alert('SheetJS nicht geladen.'); return; }
+  if (!detSeries.length) return;
+
+  const von = +document.getElementById('det-von').value;
+  const bis = +document.getElementById('det-bis').value;
+  const agg = detState.agg;
+  const allData = detSeries.map(s => getSeriesData(s.id, s.table));
+  const labels  = allData[0].labels;
+
+  const aggLabel = agg==='M' ? 'Monat' : agg==='Q' ? 'Quartal' : 'Jahr';
+
+  // Build header
+  const header = [aggLabel];
+  detSeries.forEach(s => {
+    header.push(`${s.label} (Tsd. €)`);
+    header.push(`${s.label} – Vj.-Änderung`);
+  });
+
+  // Build rows
+  const rows = [header];
+  labels.forEach((lbl, i) => {
+    const row = [lbl];
+    allData.forEach(d => {
+      row.push(d.absVals[i] != null ? d.absVals[i] : null);
+      row.push(d.pctVals[i] != null ? d.pctVals[i] / 100 : null);
+    });
+    rows.push(row);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Column widths + number formats
+  const cols = [{ wch: 14 }];
+  detSeries.forEach(() => { cols.push({ wch: 20 }); cols.push({ wch: 16 }); });
+  ws['!cols'] = cols;
+
+  // Apply number formats
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = 1; R <= range.e.r; R++) {
+    for (let C = 1; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({r:R, c:C});
+      const cell = ws[addr];
+      if (!cell || cell.v == null) continue;
+      // Even cols = absolute value, odd cols = percentage
+      cell.t = 'n';
+      cell.z = (C % 2 === 0) ? '0.0%' : '#,##0.000';
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Zeitreihe');
+
+  const seriesSlug = detSeries.length === 1
+    ? detSeries[0].label.replace(/[^a-zA-Z0-9äöüÄÖÜ]/g, '_').slice(0, 35)
+    : `${detSeries.length}Reihen`;
+  XLSX.writeFile(wb, `Steueraufkommen_Zeitreihe_${seriesSlug}_${von}-${bis}_${fileTimestamp()}.xlsx`);
+}
+
+// ────── Init ──────
+// Set default monat to latest available
+const latestAvail = RAW.filter(r => r.t1['355'] > 0).sort((a,b) => b.jahr-a.jahr||b.monat-a.monat)[0];
+if (latestAvail) {
+  ['t1-jahr','t2-jahr'].forEach(id => { document.getElementById(id).value = latestAvail.jahr; });
+  ['t1-monat','t2-monat'].forEach(id => { document.getElementById(id).value = latestAvail.monat; });
+}
+renderHome();
+</script>
+</body>
+</html>
