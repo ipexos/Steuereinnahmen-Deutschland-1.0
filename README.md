@@ -1,7 +1,8 @@
 # Steueraufkommen Deutschland – Dashboard
+Verantwortlich: Holger Zemanek
 
 Interaktives Datendashboard zum monatlichen Steueraufkommen der Bundesrepublik Deutschland.  
-Datenquelle: Bundesministerium der Finanzen, IA5 (DeStatis-Datenlieferung).
+Datenquelle: Bundesministerium der Finanzen.
 
 ## Dateien
 
