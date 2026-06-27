@@ -269,8 +269,9 @@
 <!-- ═══════════════════ HOME ═══════════════════ -->
 <div id="view-home" class="view active">
   <div class="home-hero">
-    <h1>Steuereinnahmen der Bundesrepublik Deutschland</h1>
-    <p>Monatliche Übersicht des Steueraufkommens nach Steuerarten und Gebietskörperschaften (ohne Gemeindesteuern). Datenquelle: Bundesministerium der Finanzen.</p>
+    <h1>Steueraufkommen der Bundesrepublik Deutschland</h1>
+    <p>Monatliche Übersicht des Steueraufkommens nach Steuerarten und Gebietskörperschaften (ohne Gemeindesteuern).</p>
+    <p style="margin-top:0.6rem">Datenquelle: Bundesministerium der Finanzen.</p>
     <div class="latest-tag" id="home-latest-tag">Aktuellste Daten</div>
   </div>
   <div class="home-kpis">
@@ -502,7 +503,7 @@
       <div class="detail-title" id="det-title">Zeitreihenvergleich</div>
       <div class="detail-sub" id="det-sub">Alle Angaben in Tsd. Euro</div>
       <div style="font-size:0.68rem;margin-top:0.2rem;color:var(--slate3)">
-        <span style="display:inline-block;width:10px;height:10px;background:#c8922a;border-radius:2px;margin-right:4px;vertical-align:middle"></span>vorläufig (laufendes Jahr, noch nicht alle Monate verfügbar)
+        <span style="display:inline-block;width:10px;height:10px;background:#b05cc8;border-radius:2px;margin-right:4px;vertical-align:middle"></span>vorläufig (laufendes Jahr bzw. Quartal, noch nicht alle Monate verfügbar)
       </div>
     </div>
     <button id="det-back-btn" class="back-btn" onclick="showView('t1',document.querySelector('nav button:nth-child(2)'))">← Zurück</button>
@@ -694,7 +695,10 @@ function renderHome() {
   kpis.forEach(([vi,di,key,sub]) => {
     const v = latest[sub][key];
     const p = prev ? prev[sub][key] : null;
-    document.getElementById(vi).textContent = fmtMrd(v);
+    const monatName = MONTHS_LONG[latest.monat-1];
+    document.getElementById(vi).innerHTML =
+      fmtMrd(v) +
+      ` <span style="font-size:0.75rem;font-weight:400;color:var(--slate3);font-family:'Segoe UI',Arial,sans-serif">(${monatName} ${latest.jahr})</span>`;
     const d = p ? pct(v,p) : null;
     const de = document.getElementById(di);
     if (d!=null) {
@@ -770,6 +774,7 @@ const T1_ROWS = [
   {type:'sub', id:'139', label:'Stromsteuer', indent:1},
   {type:'sub', id:'141', label:'Alkoholsteuer', indent:1},
   {type:'sub', id:'760', label:'Luftverkehrsteuer', indent:1},
+  {type:'sub', id:'761', label:'Kernbrennstoffsteuer', indent:1},
   {type:'sub', id:'5609', label:'EU-Energiekrisenbeitrag', indent:1},
   {type:'sub', id:'143', label:'Kaffeesteuer', indent:1},
   {type:'sub', id:'144', label:'Schaumweinsteuer', indent:1},
@@ -1015,6 +1020,7 @@ const SIDEBAR_ROWS_T1 = [
   {type:'sub',   id:'139',   label:'Stromsteuer', indent:1},
   {type:'sub',   id:'141',   label:'Alkoholsteuer', indent:1},
   {type:'sub',   id:'760',   label:'Luftverkehrsteuer', indent:1},
+  {type:'sub',   id:'761',   label:'Kernbrennstoffsteuer', indent:1},
   {type:'sub',   id:'5609',  label:'EU-Energiekrisenbeitrag', indent:1},
   {type:'sub',   id:'143',   label:'Kaffeesteuer', indent:1},
   {type:'sub',   id:'144',   label:'Schaumweinsteuer', indent:1},
@@ -1228,7 +1234,7 @@ function renderDetail() {
   // Build datasets for each series
   const absDatasets = detSeries.map(s => {
     const d = getSeriesData(s.id, s.table);
-    const borderColors = d.incomplete.map(f => f ? '#c8922a' : s.color);
+    const borderColors = d.incomplete.map(f => f ? '#b05cc8' : s.color);
     return {
       type:'line', label:s.label,
       data: d.absVals.map(v=>v/divisor),
@@ -1238,7 +1244,7 @@ function renderDetail() {
       pointHoverRadius:5,
       pointBackgroundColor: borderColors,
       pointBorderColor: borderColors,
-      segment:{ borderColor: ctx => d.incomplete[ctx.p1DataIndex] ? '#c8922a' : s.color },
+      segment:{ borderColor: ctx => d.incomplete[ctx.p1DataIndex] ? '#b05cc8' : s.color },
     };
   });
 
@@ -1247,8 +1253,8 @@ function renderDetail() {
     return {
       type:'bar', label:s.label,
       data: d.pctVals,
-      backgroundColor: d.pctVals.map((v,i) => v===null?'#ccc': d.incomplete[i]?'#c8922a99': v>=0?s.color+'99':s.color+'66'),
-      borderColor: d.pctVals.map((v,i) => v===null?'#bbb': d.incomplete[i]?'#c8922a': s.color),
+      backgroundColor: d.pctVals.map((v,i) => v===null?'#ccc': d.incomplete[i]?'#b05cc899': v>=0?s.color+'99':s.color+'66'),
+      borderColor: d.pctVals.map((v,i) => v===null?'#bbb': d.incomplete[i]?'#b05cc8': s.color),
       borderWidth:1, borderRadius:2,
     };
   });
@@ -1565,5 +1571,9 @@ if (latestAvail) {
 }
 renderHome();
 </script>
+
+<footer style="text-align:center;padding:0.75rem 1rem;font-size:0.72rem;color:var(--muted);background:var(--slate2);border-top:1px solid var(--slate3);letter-spacing:0.02em">
+  Autor: Holger Zemanek &nbsp;·&nbsp; Version 1.1 (27.06.2026) &nbsp;·&nbsp; <a href="https://github.com/ipexos" target="_blank" style="color:var(--muted);text-decoration:underline">Kontakt</a>
+</footer>
 </body>
 </html>
